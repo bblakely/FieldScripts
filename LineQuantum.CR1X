@@ -1,0 +1,50 @@
+'CR1000x Series Datalogger
+'Based on: "Example datalogger program for Apogee Instruments SQ-100 and SQ-300 series quantum sensors"
+'Date: Adapted by BB June 2019; example program July 17, 2013
+'Example program author: Jacob Bingham
+
+'Explanation of Constants and Variables Used in Datalogger Program
+'BattV = datalogger battery voltage
+'PanelT = datalogger panel temperature
+'PPF = photosynthetic photon flux in umol m-2 s-1 (micromoles per square meter per second)
+
+'Declare Public Variables
+Public BattV, PanelT
+Public PPF1
+Public PPF2
+Public PPF3
+Public PPF4
+Public PPF5
+Public PPF_above
+
+'Define Data Tables
+DataTable (Quantum,1,-1)
+	DataInterval (0,500,msec,10)
+	Minimum(1,BattV,IEEE4,0,False)
+	Sample(1,PanelT,IEEE4)
+	Average(1,PPF1,IEEE4,False)
+	Average(1,PPF2,IEEE4,False)
+	Average(1,PPF3,IEEE4,False)
+	Average(1,PPF4,IEEE4,False)
+	Average(1,PPF5,IEEE4,False)
+	Average(1,PPF_above,IEEE4,False)
+EndTable
+
+'Main Program
+BeginProg
+	Scan(500,msec,0,0)
+		Battery(BattV)
+		PanelTemp(PanelT,_60Hz)
+		
+    'Measure Photosynthetic Photon Flux (PPF) On a Differential Channel (Can Also Be Measured On a Single-ended Channel)
+     VoltDiff(PPF1,1,AutoRange,1,True,0,60,5,0)
+     VoltDiff(PPF2,1,AutoRange,2,True,0,60,5,0)
+     VoltDiff(PPF3,1,AutoRange,3,True,0,60,5,0)
+     VoltDiff(PPF4,1,AutoRange,4,True,0,60,5,0)
+     VoltDiff(PPF5,1,AutoRange,5,True,0,60,5,0)
+     VoltDiff(PPF_above,1,AutoRange,6,True,0,60,5,0)
+
+    'Call Output Tables
+		CallTable Quantum
+	NextScan
+EndProg

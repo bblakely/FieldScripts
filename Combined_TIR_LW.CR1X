@@ -1,0 +1,129 @@
+'Program for pyrgeometers, [TIR sensor], [CNR2s]
+'Based on: "Example datalogger program for Apogee Instruments SL-510 and SL-610 thermopile pyrgeometers"
+'Date: Adapted by BB June 2019; example program October 20, 2016
+'Example program author: Jacob Bingham; most comments from example program
+
+'Explanation of Constants and Variables Used in Datalogger Program
+'BattV = datalogger battery voltage
+'PanelT = datalogger panel temperature
+
+'The following variables are enumerated '1' (downward looking) and '2'(upward looking) for set of 2 pyrgeometers
+'Pyrg_mV = voltage signal from pyrgeometer detector
+'Pyrg_SBTemp_C = calculated sensor body temperature in degrees Celcius
+'Rt = resistance of thermistor for measuring sensor body temperature
+'ST_Rat = ratio of measured voltage to excitation voltage from half bridge measurement
+'Pyrg_LWi = emitted longwave radiation in W m-2 (watts per square meter)
+
+'Declare public variables
+Dim TT_K
+Dim SBT_K
+Dim m
+Dim b
+
+Public BattV, PanelT
+Public Pyrg1_mV
+Public Pyrg2_mV
+Public Pyrg1_SBTemp_C
+Public Pyrg2_SBTemp_C
+Public Rt1, ST_Rat1
+Public Rt2, ST_Rat2
+Public Pyrg1_LWout
+Public Pyrg2_LWin
+
+Public TT_C
+Public SBT_C
+Public TTmV
+
+Units TT_C=Deg C
+Units SBT_C=Deg C
+
+
+'Apogee Pyrgeometer Thermistor Coefficients
+Const A_Below0 = 0.000932960
+Const B_Below0 = 0.000221424
+Const C_Below0 = 0.000000126329
+Const A_Above0 = 0.000932794
+Const B_Above0 = 0.000221451
+Const C_Above0 = 0.000000126233
+
+'Stefan-Boltzmann constant
+Const Sigma = 0.000000056704
+
+'Sensor specific calibration coefficients
+Const Pyrg1_k1 = 9.775 '610, sn 1045
+Const Pyrg1_k2 = 1.025 '610, sn 1045
+Const Pyrg2_k1 = 9.424 '510, sn 1105
+Const Pyrg2_k2 = 1.024 '510, sn 1105
+
+
+'Define Data Tables
+DataTable (Longwave,1,-1)
+	DataInterval (0,500,msec,10)
+	Minimum(1,BattV,IEEE4,0,False)
+	Sample(1,PanelT,IEEE4)
+  Average(1,Pyrg1_LWout,IEEE4,False)
+  Average(1,Pyrg2_LWin,IEEE4,False)
+  Average(1,TT_C,IEEE4,False)
+	Average(1,SBT_C,IEEE4,False)
+  
+EndTable
+
+'Main Program
+BeginProg
+	Scan(500,msec,0,0)
+		Battery(BattV)
+		PanelTemp(PanelT,_60Hz)
+		
+      'PYRGEOMETER
+      'Measure incoming longwave radiation on a differential channel
+      VoltDiff (Pyrg1_mV,1,AutoRange,1,True,0,60,1,0)'edited
+      VoltDiff (Pyrg2_mV,1,AutoRange,3,True,0,60,1,0)'edited
+      'Measure sensor body temperature using half bridge measurement
+      BrHalf (ST_Rat1,1,AutoRange,3,Vx1,1,2500,True,0,60,1,0)'edited
+      BrHalf (ST_Rat2,1,AutoRange,7,Vx2,1,2500,True,0,60,1,0)'edited
+      'Calculate resistance of pyrgeometer thermistor
+      Rt1 = 24900 * (ST_Rat1 / (1 - ST_Rat1))
+      Rt2 = 24900 * (ST_Rat2 / (1 - ST_Rat2))
+      
+      'Use appropriate thermistor coefficients depending on calculated resistance
+      If Rt1 > 94980 Then 'Resistance value at 0 C
+      Pyrg1_SBTemp_C = (1 / (A_Below0 + (B_Below0 * LN(Rt1)) + (C_Below0 * (LN(Rt1))^3))) - 273.15
+			Else
+		  Pyrg1_SBTemp_C = (1 / (A_Above0 + (B_Above0 * LN(Rt1)) + (C_Above0 * (LN(Rt1))^3))) - 273.15
+			EndIf
+			
+      If Rt2 > 94980 Then 'Resistance value at 0 C
+      Pyrg2_SBTemp_C = (1 / (A_Below0 + (B_Below0 * LN(Rt2)) + (C_Below0 * (LN(Rt2))^3))) - 273.15
+			Else
+		  Pyrg2_SBTemp_C = (1 / (A_Above0 + (B_Above0 * LN(Rt2)) + (C_Above0 * (LN(Rt2))^3))) - 273.15
+			EndIf
+      
+      
+      'Calculate emitted longwave radiation in units of W m-2
+      Pyrg1_LWout = Pyrg1_k1 * Pyrg1_mV + Pyrg1_k2 * Sigma * (Pyrg1_SBTemp_C + 273.15) ^ 4
+      Pyrg2_LWin = Pyrg2_k1 * Pyrg2_mV + Pyrg2_k2 * Sigma * (Pyrg2_SBTemp_C + 273.15) ^ 4
+    
+    'RADIOMETER
+		'SI-111 Precision Infrared Radiometer measurements 'TT_C' and 'SBT_C'
+		'Measure SI-111 sensor body thermistor temperature
+		Therm109(SBT_C,1,11,VX3,0,60,1,0)
+		'Measure SI-111 output of thermopile
+		VoltDiff(TTmV,1,mV200,5,True,0,60,1,0)
+		'Calculate slope (m) and offset (b) coefficients for target temperature calculation
+		m=2192890000+(11372300*SBT_C)+(118856*SBT_C^2)'As of 6-25, not real values; from WCR sensors
+		b=-6373430+(196652*SBT_C)+(4458.85*SBT_C^2)'As of 6-25, not real values; from WCR sensors
+		'Calculate target temperature using calculated slope (m) and offset (b)
+		SBT_K=SBT_C+273.15
+		TT_K=SBT_K^4+TTmV*m+b
+		TT_K=SQR(SQR(TT_K))
+		'Convert target temperature into desired units
+		TT_C=TT_K-273.15
+		'Call Data Tables and Store Data
+
+
+
+    'Call Output Tables
+		CallTable Longwave
+	NextScan
+EndProg
+

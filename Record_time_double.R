@@ -5,7 +5,7 @@
 
 #Create file name and row names
 if(!exists('filename')){
-  
+    
   #Naming setup
   filename<-readline("Enter a file name to write, without extension: ")
   file<-paste(filename, ".csv", sep='');file.create(file)
