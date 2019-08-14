@@ -32,11 +32,11 @@ if (count!=0){ #if it's not the file-creating runthrough...
   if(count%%2!=0){
     print(paste('Entering row ', rows[count],', range ',ranges[count], sep=''))
     io<-'s'
-    beep(1)
+    #beep(1)
     }else{
       print(paste('Exiting row ', rows[count],', range ',ranges[count], sep=''))
       io<-'e'
-      beep(2)}
+      #beep(2)}
   
   record<-data.frame(rows[count], ranges[count], io, (Sys.time()))
   write.table(record,file, append=TRUE, row.names=FALSE, col.names=FALSE, sep=',')
