@@ -13,3 +13,4 @@ importCSdata <- function(filename,RetOpt="data"){
     stn.data$TIMESTAMP <- as.POSIXlt(strptime(stn.data$TIMESTAMP,"%Y-%m-%d %H:%M:%S"))
     return(stn.data)}
 }
+
